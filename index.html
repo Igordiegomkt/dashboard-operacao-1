@@ -71,7 +71,7 @@
         DASHBOARD_Operacao_1 — Tempo Real
       </div>
       <div class="sub">
-        <span>Fonte: <code>public.dashboard_operacao_1</code></span>
+        <span>Fonte: <code>public.dashboard_operacao_1_view</code></span>
         <span>Atualiza a cada <strong id="intervalLabel">10s</strong></span>
         <span>Fuso: <strong>America/Sao_Paulo</strong></span>
       </div>
@@ -84,20 +84,18 @@
         <div class="status" id="statusText">⌛ carregando…</div>
       </div>
       <pre id="panelText">Carregando painel…</pre>
-      <div class="hint">Dica: se algum viewer truncar o conteúdo, este painel já vem com quebras de linha reais.</div>
+      <div class="hint">Painel atualiza automaticamente a cada 10 segundos.</div>
     </div>
   </div>
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script>
-    // ⚙️ Configuração Supabase
     const SUPABASE_URL = "https://atexvoxukvaqittpqkov.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0ZXh2b3h1a3ZhcWl0dHBxa292Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NTYyNjAsImV4cCI6MjA3NjEzMjI2MH0.HptK9KRkqkSQL3jrwAwH0rOSDGhlXOTwGwGqjwNgtU4";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ✅ Nome correto da view e coluna
-    const VIEW_NAME = "dashboard_operacao_1";
-    const COL_NAME = "📊 Painel de Operação";
+    const VIEW_NAME = "dashboard_operacao_1_view";
+    const COL_NAME = "painel_operacao"; // substitua pelo nome real da coluna
 
     const panelText = document.getElementById('panelText');
     const statusText = document.getElementById('statusText');
@@ -116,23 +114,19 @@
     async function fetchPanel() {
       try {
         setStatus('🔄 atualizando…');
-        const { data, error } = await supabase
-          .from(VIEW_NAME)
-          .select('*')
-          .limit(1);
-
+        const { data, error } = await supabase.from(VIEW_NAME).select('*').limit(1);
         if (error) throw error;
 
         if (!data || data.length === 0) {
-          panelText.textContent = '⚠️ Nenhum dado encontrado na view.';
+          panelText.textContent = '⚠️ Nenhum dado encontrado.';
         } else {
           const row = data[0];
           const content = row[COL_NAME] ?? '(sem conteúdo)';
           panelText.textContent = content;
         }
 
-        const when = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-        setStatus('✅ atualizado: ' + when);
+        const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        setStatus(`🟢 Última atualização: ${now}`);
         liveDot.style.background = paused ? '#999' : 'var(--ok)';
         liveDot.style.boxShadow = paused ? 'none' : '0 0 10px var(--ok)';
       } catch (err) {
@@ -168,7 +162,6 @@
       }
     });
 
-    // inicializa
     fetchPanel();
     startAuto();
   </script>
