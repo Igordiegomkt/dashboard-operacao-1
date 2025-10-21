@@ -94,7 +94,7 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0ZXh2b3h1a3ZhcWl0dHBxa292Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NTYyNjAsImV4cCI6MjA3NjEzMjI2MH0.HptK9KRkqkSQL3jrwAwH0rOSDGhlXOTwGwGqjwNgtU4";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const VIEW_NAME = "dashboard_operacao_1_view";
+    const VIEW_NAME = "dashboard_operacao_1"; // nome correto da view no Supabase
     const COL_NAME = "painel_operacao"; // substitua pelo nome real da coluna
 
     const panelText = document.getElementById('panelText');
@@ -167,3 +167,4 @@
   </script>
 </body>
 </html>
+
