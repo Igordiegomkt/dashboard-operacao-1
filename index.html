@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DASHBOARD_Operacao_1 — Tempo Real</title>
+  <title>DASHBOARD_Operação_1 — Tempo Real</title>
 
   <style>
     :root {
@@ -12,8 +12,8 @@
       --muted: #8b93a7;
       --text: #e5e7ef;
       --accent: #6aa3ff;
-      --ok: #26d981;
-      --warn: #ffd166;
+      --igor: #00ff95;
+      --julio: #ffd166;
       --bad: #ff6b6b;
     }
     * { box-sizing: border-box; }
@@ -29,14 +29,8 @@
       font-size: 20px; font-weight: 700; letter-spacing: .5px;
       display: flex; align-items: center; gap: 10px;
     }
-    .title .dot {
-      width: 10px; height: 10px; border-radius: 999px;
-      background: var(--ok); box-shadow: 0 0 10px var(--ok);
-    }
-    .sub {
-      color: var(--muted); font-size: 13px;
-      display: flex; gap: 10px; flex-wrap: wrap;
-    }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--igor); box-shadow: 0 0 10px var(--igor); }
+    .sub { color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap; }
     .card {
       background: linear-gradient(0deg, rgba(255,255,255,.03), rgba(255,255,255,.03)), var(--card);
       border: 1px solid rgba(255,255,255,.06);
@@ -56,11 +50,12 @@
     pre {
       margin: 0; padding: 14px; border-radius: 10px;
       background: #0c0f17; border: 1px solid rgba(255,255,255,.06);
-      white-space: pre-wrap;
-      word-break: break-word;
+      white-space: pre-wrap; word-break: break-word;
       font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     }
     .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .igor { color: var(--igor); font-weight: 600; }
+    .julio { color: var(--julio); font-weight: 600; }
   </style>
 </head>
 <body>
@@ -68,10 +63,10 @@
     <div class="header">
       <div class="title">
         <span class="dot" id="live-dot"></span>
-        DASHBOARD_Operacao_1 — Tempo Real
+        DASHBOARD_Operação_1 — Tempo Real
       </div>
       <div class="sub">
-        <span>Fonte: <code>public.dashboard_operacao_1_view</code></span>
+        <span>Fonte: <code>public.dashboard_operacao_1</code></span>
         <span>Atualiza a cada <strong id="intervalLabel">10s</strong></span>
         <span>Fuso: <strong>America/Sao_Paulo</strong></span>
       </div>
@@ -92,17 +87,17 @@
   <script>
     const SUPABASE_URL = "https://atexvoxukvaqittpqkov.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0ZXh2b3h1a3ZhcWl0dHBxa292Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NTYyNjAsImV4cCI6MjA3NjEzMjI2MH0.HptK9KRkqkSQL3jrwAwH0rOSDGhlXOTwGwGqjwNgtU4";
+
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const VIEW_NAME = "dashboard_operacao_1"; // nome correto da view no Supabase
-    const COL_NAME = "painel_operacao"; // substitua pelo nome real da coluna
+    const VIEW_NAME = "dashboard_operacao_1";
+    let COL_NAME = null;
 
     const panelText = document.getElementById('panelText');
     const statusText = document.getElementById('statusText');
     const refreshBtn = document.getElementById('refreshBtn');
     const pauseBtn = document.getElementById('pauseBtn');
     const liveDot = document.getElementById('live-dot');
-
     let TIMER_MS = 10000;
     let timerId = null;
     let paused = false;
@@ -111,24 +106,33 @@
       statusText.textContent = msg;
     }
 
+    async function detectColumn() {
+      const { data, error } = await supabase.from(VIEW_NAME).select('*').limit(1);
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const keys = Object.keys(data[0]);
+        const txtCol = keys.find(k => typeof data[0][k] === 'string');
+        if (txtCol) COL_NAME = txtCol;
+      }
+    }
+
     async function fetchPanel() {
       try {
+        if (!COL_NAME) await detectColumn();
         setStatus('🔄 atualizando…');
         const { data, error } = await supabase.from(VIEW_NAME).select('*').limit(1);
         if (error) throw error;
-
         if (!data || data.length === 0) {
           panelText.textContent = '⚠️ Nenhum dado encontrado.';
         } else {
           const row = data[0];
           const content = row[COL_NAME] ?? '(sem conteúdo)';
-          panelText.textContent = content;
+          panelText.innerHTML = content
+            .replace(/👤 IGOR/g, '<span class="igor">👤 IGOR</span>')
+            .replace(/👤 JULIO/g, '<span class="julio">👤 JULIO</span>');
         }
-
-        const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-        setStatus(`🟢 Última atualização: ${now}`);
-        liveDot.style.background = paused ? '#999' : 'var(--ok)';
-        liveDot.style.boxShadow = paused ? 'none' : '0 0 10px var(--ok)';
+        const when = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        setStatus('🟢 Última atualização: ' + when);
       } catch (err) {
         console.error(err);
         setStatus('❌ erro ao atualizar');
@@ -151,13 +155,9 @@
         pauseBtn.textContent = 'Retomar';
         setStatus('⏸️ atualização pausada');
         liveDot.style.background = '#999';
-        liveDot.style.boxShadow = 'none';
       } else {
         startAuto();
         pauseBtn.textContent = 'Pausar';
-        setStatus('▶️ atualização retomada');
-        liveDot.style.background = 'var(--ok)';
-        liveDot.style.boxShadow = '0 0 10px var(--ok)';
         fetchPanel();
       }
     });
@@ -167,4 +167,3 @@
   </script>
 </body>
 </html>
-
