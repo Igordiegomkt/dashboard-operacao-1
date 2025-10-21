@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DASHBOARD_Operação_1 — Tempo Real</title>
+
+  <!-- Fonte + Dark minimal -->
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #151823;
+      --muted: #8b93a7;
+      --text: #e5e7ef;
+      --accent: #6aa3ff;
+      --ok: #26d981;
+      --warn: #ffd166;
+      --bad: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.45 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial;
+      display: grid; place-items: start center;
+    }
+    .wrap {
+      width: min(1100px, 92vw);
+      padding: 20px;
+    }
+    .header {
+      display: grid; gap: 6px; margin-bottom: 12px;
+    }
+    .title {
+      font-size: 20px; font-weight: 700; letter-spacing: .5px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .title .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    .sub {
+      color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .card {
+      background: linear-gradient(0deg, rgba(255,255,255,.03), rgba(255,255,255,.03)), var(--card);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 14px;
+      padding: 14px 14px 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.04);
+    }
+    .toolbar {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+    }
+    button {
+      background: rgba(255,255,255,.06); color: var(--text);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 8px 10px; border-radius: 10px; cursor: pointer;
+      font-weight: 600; letter-spacing: .2px;
+    }
+    button:hover { background: rgba(255,255,255,.1); }
+    .status {
+      margin-left: auto; color: var(--muted); font-size: 12px;
+    }
+    pre {
+      margin: 0; padding: 14px; border-radius: 10px;
+      background: #0c0f17; border: 1px solid rgba(255,255,255,.06);
+      white-space: pre-wrap; /* mantém quebras e também quebra linhas longas */
+      word-break: break-word;
+      font: 14px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">
+        <span class="dot" id="live-dot"></span>
+        DASHBOARD_Operação_1 — Tempo Real
+      </div>
+      <div class="sub">
+        <span>Fonte: <code>public."DASHBOARD_Operação_1"</code></span>
+        <span>Atualiza a cada <strong id="intervalLabel">10s</strong></span>
+        <span>Fuso: <strong>America/Sao_Paulo</strong></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <button id="refreshBtn">Atualizar agora</button>
+        <button id="pauseBtn">Pausar</button>
+        <div class="status" id="statusText">⌛ carregando…</div>
+      </div>
+      <pre id="panelText">Carregando painel…</pre>
+      <div class="hint">Dica: se algum viewer truncar o conteúdo, este painel já vem com quebras de linha reais.</div>
+    </div>
+  </div>
+
+  <!-- Supabase JS (CDN oficial) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // 👇 Substitua pelas credenciais públicas do seu projeto (anon key!)
+    const SUPABASE_URL = "https://atexvoxukvaqittpqkov.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0ZXh2b3h1a3ZhcWl0dHBxa292Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NTYyNjAsImV4cCI6MjA3NjEzMjI2MH0.HptK9KRkqkSQL3jrwAwH0rOSDGhlXOTwGwGqjwNgtU4";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const VIEW_NAME = `"DASHBOARD_Operação_1"`; // nome contém acento: mantenha as aspas duplas
+    const COL_NAME  = "📊 Painel de Operação";   // acessaremos por colchetes
+
+    const panelText = document.getElementById('panelText');
+    const statusText = document.getElementById('statusText');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const liveDot = document.getElementById('live-dot');
+
+    let TIMER_MS = 10000; // 10 segundos
+    let timerId = null;
+    let paused = false;
+
+    function setStatus(msg) {
+      statusText.textContent = msg;
+    }
+
+    async function fetchPanel() {
+      try {
+        setStatus('🔄 atualizando…');
+        // a view retorna 1 linha; usamos select('*') e pegamos a primeira
+        const { data, error } = await supabase
+          .from(VIEW_NAME)
+          .select('*')
+          .limit(1);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          panelText.textContent = '⚠️ Nenhum dado encontrado na view.';
+        } else {
+          const row = data[0];
+          const content = row[COL_NAME] ?? '(sem conteúdo)';
+          panelText.textContent = content;
+        }
+
+        const when = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        setStatus('✅ atualizado: ' + when);
+        liveDot.style.background = paused ? '#999' : 'var(--ok)';
+        liveDot.style.boxShadow = paused ? 'none' : '0 0 10px var(--ok)';
+      } catch (err) {
+        console.error(err);
+        setStatus('❌ erro ao atualizar');
+        panelText.textContent = 'Erro: ' + (err?.message || err);
+        liveDot.style.background = 'var(--bad)';
+        liveDot.style.boxShadow = '0 0 10px var(--bad)';
+      }
+    }
+
+    function startAuto() {
+      if (timerId) clearInterval(timerId);
+      timerId = setInterval(fetchPanel, TIMER_MS);
+    }
+
+    refreshBtn.addEventListener('click', () => {
+      fetchPanel();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      paused = !paused;
+      if (paused) {
+        clearInterval(timerId);
+        pauseBtn.textContent = 'Retomar';
+        setStatus('⏸️ atualização pausada');
+        liveDot.style.background = '#999';
+        liveDot.style.boxShadow = 'none';
+      } else {
+        startAuto();
+        pauseBtn.textContent = 'Pausar';
+        setStatus('▶️ atualização retomada');
+        liveDot.style.background = 'var(--ok)';
+        liveDot.style.boxShadow = '0 0 10px var(--ok)';
+        fetchPanel();
+      }
+    });
+
+    // inicializa
+    fetchPanel();
+    startAuto();
+  </script>
+</body>
+</html>
